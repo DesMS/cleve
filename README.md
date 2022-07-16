@@ -8,5 +8,5 @@
 #### Adapt — remix, transform, and build upon the material
 #### for any purpose, even commercially.
 ### This license is acceptable for Free Cultural Works.
-##### The licensor cannot revoke these freedoms as long as you follow the license terms.
+###### The licensor cannot revoke these freedoms as long as you follow the license terms.
 
