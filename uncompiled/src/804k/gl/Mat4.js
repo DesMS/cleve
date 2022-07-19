@@ -1,9 +1,9 @@
 class Mat4 {
 	#mat = [
-		1, 0, 0, 0,
-		0, 1, 0, 0,
-		0, 0, 1, 0,
-		0, 0, 0, 1
+		1.0, 0.0, 0.0, 0.0,
+		0.0, 1.0, 0.0, 0.0,
+		0.0, 0.0, 1.0, 0.0,
+		0.0, 0.0, 0.0, 1.0
 	];
 	get Matrix() {
 		return this.#mat;
@@ -24,6 +24,10 @@ class Mat4 {
 			return;
 		}
 		this.#mat[p] = n;
+	}
+	setMatrix(matrix = []) {
+		this.#mat = matrix;
+		return;
 	}
 	translate(pos = new Vec3(0, 0, 0)) {
 		if (!(pos instanceof Vec3)) {
@@ -254,7 +258,7 @@ class Mat4 {
 			b10 = a21 * a33 - a23 * a31,
 			b11 = a22 * a33 - a23 * a32,
 			det = b00 * b11 - b01 * b10 + b02 * b09 + b03 * b08 - b04 * b07 + b05 * b06;
-		if (!det) {
+		if (!det && det != 0) {
 			console.error(`Unable to invert matrix.`);
 			return;
 		}
@@ -279,12 +283,17 @@ class Mat4 {
 	}
 	reset() {
 		this.#mat = [
-			1, 0, 0, 0,
-			0, 1, 0, 0,
-			0, 0, 1, 0,
-			0, 0, 0, 1
+			1.0, 0.0, 0.0, 0.0,
+			0.0, 1.0, 0.0, 0.0,
+			0.0, 0.0, 1.0, 0.0,
+			0.0, 0.0, 0.0, 1.0
 		];
 		return;
+	}
+	copy() {
+		var newmat = new Mat4();
+		newmat.setMatrix(this.#mat.slice());
+		return newmat;
 	}
 	constructor(pos = undefined) {
 		if (pos instanceof Vec3) {

@@ -1,10 +1,36 @@
 class GL {
+	static vs = [
+`attribute vec4 position;`,
+`attribute vec2 texcoord;`,
+`uniform mat4 model;`,
+`varying highp vec2 vtexcoord;`,
+`void main() {`,
+	`gl_Position = model * position;`,
+	`vtexcoord = texcoord;`,
+`}`
+	].join(`\n`);
+	static fs = [
+`precision highp float;`,
+`varying highp vec2 vtexcoord;`,
+`uniform vec3 lightDir;`,
+`uniform sampler2D sampler;`,
+`void main(void) {`,
+	`gl_FragColor = texture2D(sampler, vtexcoord);`,
+`}`
+	].join(`\n`);
+	static #lightDir = Vec3.normalize(new Vec3(1, 2, 3));
+	static vertexShader;
+	static fragmentShader;
 	static #md;
 	static #ps;
 	static #cl;
 	static #up;
+	static #ld;
+	static #vd;
+	static #nm;
 	static #bcl;
 	static #bel;
+	static #bnm;
 	static #loaded = false;
 	static #load = () => {
 		Minecraft.width = document.documentElement.clientWidth;
@@ -31,8 +57,8 @@ class GL {
 		}
 		const vShader = Minecraft.gl.createShader(Minecraft.gl.VERTEX_SHADER);
 		const fShader = Minecraft.gl.createShader(Minecraft.gl.FRAGMENT_SHADER);
-		Minecraft.gl.shaderSource(vShader, Minecraft.vs);
-		Minecraft.gl.shaderSource(fShader, Minecraft.fs);
+		Minecraft.gl.shaderSource(vShader, this.vs);
+		Minecraft.gl.shaderSource(fShader, this.fs);
 		Minecraft.gl.compileShader(vShader);
 		Minecraft.gl.compileShader(fShader);
 		if (!Minecraft.gl.getShaderParameter(vShader, Minecraft.gl.COMPILE_STATUS)) {
@@ -51,11 +77,11 @@ class GL {
 			Minecraft.running = false;
 			return;
 		}
-		Minecraft.vertexShader = vShader;
-		Minecraft.fragmentShader = fShader;
+		this.vertexShader = vShader;
+		this.fragmentShader = fShader;
 		Minecraft.program = Minecraft.gl.createProgram();
-		Minecraft.gl.attachShader(Minecraft.program, Minecraft.vertexShader);
-		Minecraft.gl.attachShader(Minecraft.program, Minecraft.fragmentShader);
+		Minecraft.gl.attachShader(Minecraft.program, this.vertexShader);
+		Minecraft.gl.attachShader(Minecraft.program, this.fragmentShader);
 		Minecraft.gl.linkProgram(Minecraft.program);
 		if (!Minecraft.gl.getProgramParameter(Minecraft.program, Minecraft.gl.LINK_STATUS)) {
 			var msg = `Unable to initialize the shader program: ${Minecraft.gl.getProgramInfoLog(Minecraft.program)}`;
@@ -70,6 +96,8 @@ class GL {
 		this.#ps = Minecraft.gl.getAttribLocation(Minecraft.program, `position`);
 		this.#cl = Minecraft.gl.getAttribLocation(Minecraft.program, `texcoord`);
 		this.#up = Minecraft.gl.getUniformLocation(Minecraft.program, `sampler`);
+		this.#ld = Minecraft.gl.getUniformLocation(Minecraft.program, `lightDir`);
+		// this.#nm = Minecraft.gl.getAttribLocation(Minecraft.program, `normal`);
 		this.#bcl = Minecraft.gl.createBuffer();
 		Minecraft.gl.bindBuffer(Minecraft.gl.ARRAY_BUFFER, this.#bcl);
 		Minecraft.gl.bufferData(Minecraft.gl.ARRAY_BUFFER, new Float32Array([
@@ -98,6 +126,36 @@ class GL {
 			1.0, 1.0,
 			0.0, 1.0
 		]), Minecraft.gl.STATIC_DRAW);
+		/*
+		this.#bnm = Minecraft.gl.createBuffer();
+		Minecraft.gl.bindBuffer(Minecraft.gl.ARRAY_BUFFER, this.#bnm);
+		Minecraft.gl.bufferData(Minecraft.gl.ARRAY_BUFFER, new Float32Array([
+			0.0, 0.0, 1.0,
+			0.0, 0.0, 1.0,
+			0.0, 0.0, 1.0,
+			0.0, 0.0, 1.0,
+			0.0, 0.0, -1.0,
+			0.0, 0.0, -1.0,
+			0.0, 0.0, -1.0,
+			0.0, 0.0, -1.0,
+			0.0, 1.0, 0.0,
+			0.0, 1.0, 0.0,
+			0.0, 1.0, 0.0,
+			0.0, 1.0, 0.0,
+			0.0, -1.0, 0.0,
+			0.0, -1.0, 0.0,
+			0.0, -1.0, 0.0,
+			0.0, -1.0, 0.0,
+			1.0, 0.0, 0.0,
+			1.0, 0.0, 0.0,
+			1.0, 0.0, 0.0,
+			1.0, 0.0, 0.0,
+			-1.0, 0.0, 0.0,
+			-1.0, 0.0, 0.0,
+			-1.0, 0.0, 0.0,
+			-1.0, 0.0, 0.0
+		]), Minecraft.gl.STATIC_DRAW);
+		*/
 		this.#bel = Minecraft.gl.createBuffer();
 		Minecraft.gl.bindBuffer(Minecraft.gl.ELEMENT_ARRAY_BUFFER, this.#bel);
 		Minecraft.gl.bufferData(Minecraft.gl.ELEMENT_ARRAY_BUFFER, new Uint16Array([
@@ -141,72 +199,63 @@ class GL {
 		}
 	}
 	static frame() {
-		Minecraft.gl.clearColor(0.0, 0.0, 0.0, 1.0);
-		Minecraft.gl.clearDepth(1.0);
-		Minecraft.gl.viewport(0, 0, Minecraft.width, Minecraft.height);
-		Minecraft.gl.enable(Minecraft.gl.DEPTH_TEST);
-		Minecraft.gl.enable(Minecraft.gl.CULL_FACE);
-		Minecraft.gl.depthFunc(Minecraft.gl.ALWAYS);
-		Minecraft.gl.clear(Minecraft.gl.COLOR_BUFFER_BIT | Minecraft.gl.DEPTH_BUFFER_BIT);
-		Minecraft.gl.useProgram(Minecraft.program);
-		return;
+		if (Minecraft.running == true) {
+			Minecraft.gl.clearColor(0.0, 0.0, 0.0, 1.0);
+			Minecraft.gl.clearDepth(1.0);
+			Minecraft.gl.clear(Minecraft.gl.COLOR_BUFFER_BIT | Minecraft.gl.DEPTH_BUFFER_BIT);
+			Minecraft.gl.enable(Minecraft.gl.CULL_FACE);
+			Minecraft.gl.enable(Minecraft.gl.DEPTH_TEST);
+			Minecraft.gl.depthFunc(Minecraft.gl.LEQUAL);
+			Minecraft.gl.useProgram(Minecraft.program);
+		} else {
+			return;
+		}
 	}
-	/*
-	static draw(type = Minecraft.gl.TRIANGLES) {
-		Minecraft.gl.useProgram(Minecraft.program);
-		// 36
-		// 
-		Minecraft.gl.drawElements(type, 36, Minecraft.gl.UNSIGNED_SHORT, 0);
-	}
-	*/
-	static addChunks(chunks = []) {
-		this.#last = [];
-		for (var i = 0; i < chunks.length; i += 1) {
-			for (var g = 0; g < chunks[i].blocks.length; g += 1) {
-				if (chunks[i].blocks[g].texture != undefined) {
-					this.#last[this.#last.length] = chunks[i].blocks[g];
-					this.add(chunks[i].blocks[g]);
-				}
+	static addChunks() {
+		if (Minecraft.running == true) {
+			for (var i = 0; i < Chunk.blocks.length; i += 1) {
+				this.add(Chunk.blocks[i]);
 			}
+		} else {
+			return;
 		}
 	}
 	static add(obj) {
-		try {
-			var i = 0;
-			var cps = new Float32Array(Array.from(obj.vertex, e => {
-				var g = i % 3;
-				if (g == 0) {
-					e += obj.pos.x * 2;
-				} else if (g == 1) {
-					e += obj.pos.y * 2;
-				} else if (g == 2) {
-					e += obj.pos.z * 2;
+		if (Minecraft.running == true) {
+			try {
+				if ((obj.lastv == undefined ? [] : obj.lastv).join() != obj.vertex.join() || obj.buffer == undefined) {
+					obj.buffer = Minecraft.gl.createBuffer();
+					obj.lastv = obj.vertex;
 				}
-				i += 1;
-				return e;
-			}));
-			var bps = Minecraft.gl.createBuffer();
-			Minecraft.gl.bindBuffer(Minecraft.gl.ARRAY_BUFFER, bps);
-			Minecraft.gl.bufferData(Minecraft.gl.ARRAY_BUFFER, cps, Minecraft.gl.STATIC_DRAW);
-			Minecraft.gl.uniformMatrix4fv(this.#md, false, new Float32Array(Minecraft.camera.Matrix));
-			Minecraft.gl.enableVertexAttribArray(this.#ps);
-			Minecraft.gl.bindBuffer(Minecraft.gl.ARRAY_BUFFER, bps);
-			Minecraft.gl.vertexAttribPointer(this.#ps, 3, Minecraft.gl.FLOAT, false, 0, 0);
-			Minecraft.gl.enableVertexAttribArray(this.#cl);
-			Minecraft.gl.bindBuffer(Minecraft.gl.ARRAY_BUFFER, this.#bcl);
-			Minecraft.gl.vertexAttribPointer(this.#cl, 2, Minecraft.gl.FLOAT, false, 0, 0);
-			Minecraft.gl.enableVertexAttribArray(this.#cl);
-			Minecraft.gl.bindBuffer(Minecraft.gl.ELEMENT_ARRAY_BUFFER, this.#bel);
-			Minecraft.gl.activeTexture(Minecraft.gl.TEXTURE0);
-			Minecraft.gl.bindTexture(Minecraft.gl.TEXTURE_2D, obj.texture);
-			Minecraft.gl.uniform1i(this.#up, 0);
-			// 36
-			Minecraft.gl.drawElements(Minecraft.gl.TRIANGLES, 36, Minecraft.gl.UNSIGNED_SHORT, 0);
-		} catch (err) {
-			console.log(obj.texture);
-			alert(err.stack);
-			console.error(err);
-			Minecraft.running = false;
+				/*
+				Minecraft.gl.bindBuffer(Minecraft.gl.ARRAY_BUFFER, this.#bnm);
+				Minecraft.gl.vertexAttribPointer(this.#nm, 3, Minecraft.gl.FLOAT, false, 0, 0);
+				*/
+				Minecraft.gl.uniformMatrix4fv(this.#md, false, new Float32Array(Minecraft.camera.Matrix.slice()));
+				// Minecraft.gl.enableVertexAttribArray(this.#nm);
+				Minecraft.gl.bindBuffer(Minecraft.gl.ARRAY_BUFFER, obj.buffer);
+				Minecraft.gl.bufferData(Minecraft.gl.ARRAY_BUFFER, new Float32Array(obj.vertex), Minecraft.gl.STATIC_DRAW);
+				Minecraft.gl.enableVertexAttribArray(this.#ps);
+				Minecraft.gl.bindBuffer(Minecraft.gl.ARRAY_BUFFER, obj.buffer);
+				Minecraft.gl.vertexAttribPointer(this.#ps, 3, Minecraft.gl.FLOAT, false, 0, 0);
+				Minecraft.gl.enableVertexAttribArray(this.#cl);
+				Minecraft.gl.bindBuffer(Minecraft.gl.ARRAY_BUFFER, this.#bcl);
+				Minecraft.gl.vertexAttribPointer(this.#cl, 2, Minecraft.gl.FLOAT, false, 0, 0);
+				Minecraft.gl.enableVertexAttribArray(this.#cl);
+				Minecraft.gl.bindBuffer(Minecraft.gl.ELEMENT_ARRAY_BUFFER, this.#bel);
+				Minecraft.gl.activeTexture(Minecraft.gl.TEXTURE0);
+				Minecraft.gl.bindTexture(Minecraft.gl.TEXTURE_2D, obj.texture);
+				Minecraft.gl.uniform1i(this.#up, 0);
+				Minecraft.gl.uniform3f(this.#ld, this.#lightDir.x, this.#lightDir.y, this.#lightDir.z);
+				Minecraft.gl.drawElements(Minecraft.gl.TRIANGLES, 36, Minecraft.gl.UNSIGNED_SHORT, 0); // TRIANGLES, LINES, POINTS
+				return obj;
+			} catch (err) {
+				alert(err.stack);
+				console.error(err);
+				Minecraft.running = false;
+				return;
+			}
+		} else {
 			return;
 		}
 	}

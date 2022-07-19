@@ -94,6 +94,20 @@ class Vec3 {
 		this.#z += vec.z;
 		return;
 	}
+	static normalize(vec = new Vec3(0, 0, 0)) {
+		const lenSq = vec.x * vec.x + vec.y * vec.y + vec.z * vec.z;
+		const len = Math.sqrt(lenSq);
+		if (len > 0.00001) {
+			vec.x = vec.x / len;
+			vec.y = vec.y / len;
+			vec.z = vec.z / len;
+		} else {
+			vec.x = 0;
+			vec.y = 0;
+			vec.z = 0;
+		}
+		return vec;
+	}
 	constructor(x = 0, y = 0, z = 0) {
 		var ex = 0;
 		var ey = 0;

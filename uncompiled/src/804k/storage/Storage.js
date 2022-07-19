@@ -11,15 +11,24 @@ class Storage {
 			window.localStorage.setItem(`cleve_save`, window.btoa(`{}`));
 			this.cleve = {};
 		}
-		var antialias;
+		var antialias = true;
 		if (this.cleve[`antialias`] == undefined || this.cleve[`antialias`] == null) {
-			this.cleve[`antialias`] = false;
-			antialias = false;
+			this.cleve[`antialias`] = true;
+			antialias = true;
 			this.save();
 		} else {
 			antialias = this.cleve[`antialias`];
 		}
+		var scale = 2;
+		if (this.cleve[`scale`] == undefined || this.cleve[`scale`] == null) {
+			this.cleve[`scale`] = 2;
+			scale = 2;
+			this.save();
+		} else {
+			scale = this.cleve[`scale`];
+		}
 		Minecraft.webgloptions[`antialias`] = antialias;
+		FontRenderer.fontHeight = 9 * scale;
 	}
 	static save() {
 		window.localStorage.setItem(`cleve_save`, window.btoa(JSON.stringify(this.cleve)));
